@@ -5,6 +5,7 @@ AML : Anti money laundering
 
 ### Objectif:
 Identifier et signale des transactions suspectes.
+Observe les CU 5 et 6. 
 
 ### Généralités
 * Acteur principal: Système

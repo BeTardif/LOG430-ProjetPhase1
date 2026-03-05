@@ -5,6 +5,8 @@ AML: Anti money laundering
 
 ### Objectif:
 Permettre un transfert de fonds sécurisé.
+Implémenter l'indempotence.
+Contrôle AML de base.
 
 ### Généralités
 * Acteur principal: Client
