@@ -1,0 +1,60 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+actor "Utilisateur / Client" as User
+participant "APIGateway (YARP)" as GW
+participant "AuthService : Program" as Prog
+participant "ProfileService" as PS
+participant "AMLAuthentification" as AML <<Static>>
+database "AuthDB (MySQL)" as DB
+
+User -> GW : POST /api/auth/profiles (RegisterRequest)
+activate GW
+
+GW -> Prog : Proxy Request
+activate Prog
+
+Prog -> PS : CreateProfileAsync(req)
+activate PS
+
+alt Requête Invalide (ex: Email manquant)
+    PS --> Prog : IResult (400 Bad Request)
+    Prog --> GW : HTTP 400
+    GW --> User : Erreur de validation
+else Données Valides
+    PS -> DB : SaveChangesAsync(New Client)
+    activate DB
+    
+    alt Échec Persistance (Erreur DB)
+        DB --> PS : Exception / Error
+        PS --> Prog : IResult (500 Internal Error)
+        Prog --> GW : HTTP 500
+        GW --> User : Erreur technique
+    else Succès Enregistrement
+        DB --> PS : Success (Client Created)
+        deactivate DB
+        
+        PS --> Prog : IResult (201 Created)
+        Prog --> GW : HTTP 201
+        GW --> User : 201 Created (Profil créé)
+        
+        ' --- Processus Asynchrone en arrière-plan ---
+        note over PS, AML : Début ExecuteAmlCheckAsync (Background)
+        PS -> AML : validateNasConformity(nas)
+        activate AML
+        AML --> PS : bool result
+        deactivate AML
+        
+        PS -> DB : Update Client State (Active/Flagged)
+        activate DB
+        DB --> PS : Commit
+        deactivate DB
+    end
+end
+
+deactivate PS
+deactivate Prog
+deactivate GW
+@enduml

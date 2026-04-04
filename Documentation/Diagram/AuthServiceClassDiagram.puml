@@ -1,0 +1,102 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "CanBankX_AuthService" {
+
+    package "Configuration" {
+        class "Program.cs" as Program <<Entry Point>> {
+            + MapPost("/api/auth/profiles")
+            + MapPost("/api/auth/authentification")
+            + MapPost("/api/auth/accounts")
+        }
+    }
+
+    package "Logique Métier" {
+        class ProfileService {
+            - db : ApplicationDbContext
+            - scopeFactory : IServiceScopeFactory
+            + CreateProfileAsync(RegisterRequest)
+            + ConfirmOtpAsync(clientId, otp)
+            - ExecuteAmlCheckAsync(clientId, scopeFactory)
+        }
+
+        class SessionService {
+            - db : ApplicationDbContext
+            {static} + Sessions : ConcurrentDictionary<Guid, AuthSession>
+            + InitializeSessionAsync(LoginRequest)
+            + ConfirmMfaAsync(sessionId, mfaCode)
+            + GetSession(sessionId) : AuthSession
+        }
+
+        class AccountService {
+            - db : ApplicationDbContext
+            - sessionService : SessionService
+            + OpenAccountAsync(AccountOpeningRequest)
+            + ReserveFundsAsync(accountId, amount)
+            + RefundFundsAsync(accountId, amount)
+            + CreditFundsByEmailAsync(email, amount)
+        }
+    }
+
+    package "<<SubModule>> AMLService"  {
+        class AMLAuthentification <<Static>> {
+            + EncodeNas(nas)
+            + DecryptNas(hash)
+            + validateNasConformity(nas)
+        }
+        class AMLAccount <<Static>> {
+            + ValidateAccountOpening(amount)
+        }
+    }
+
+    package "Data (Persistance)" {
+        class ApplicationDbContext {
+            + Clients : DbSet<Client>
+            + Accounts : DbSet<Account>
+        }
+    }
+
+    package "Models (Entités & DTOs)" {
+        class Client <<Entity>> {
+            + Id : int
+            + FirstName : string
+            + SinHash : string
+            + State : string
+        }
+        class Account <<Entity>> {
+            + Id : int
+            + Balance : decimal
+            + Status : string
+        }
+        class AuthSession <<In-Memory>> {
+            + Id : Guid
+            + Status : string
+        }
+        
+        class "Requests/DTOs" as DTO <<(D,#FF7700)>> {
+            RegisterRequest
+            LoginRequest
+            AccountOpeningRequest
+        }
+    }
+}
+
+Program --> ProfileService
+Program --> SessionService
+Program --> AccountService
+
+ProfileService --> ApplicationDbContext
+SessionService --> ApplicationDbContext
+AccountService --> ApplicationDbContext
+
+AccountService --> SessionService : "Vérifie session"
+ProfileService --> AMLAuthentification : "Validation NAS"
+AccountService --> AMLAccount : "Validation Ouverture"
+
+ProfileService --> Client
+AccountService --> Account
+SessionService --> AuthSession
+@enduml

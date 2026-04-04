@@ -1,0 +1,62 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+actor "Expéditeur" as User
+participant "APIGateway (YARP)" as GW
+participant "TransService" as TS
+participant "AMLTransaction" as AML <<Static>>
+participant "AuthService" as AS
+database "TransDB (MySQL)" as TDB
+
+User -> GW : POST /api/transactions/transfers (TransferRequest)
+activate GW
+
+GW -> TS : InitiateTransferAsync(req)
+activate TS
+
+' --- PHASE A : Réservation ---
+TS -> AS : POST /api/accounts/reserve (Amount)
+activate AS
+AS --> TS : HTTP 200 (Funds Reserved)
+deactivate AS
+
+alt Fonds insuffisants / Compte invalide
+    AS --> TS : HTTP 400
+    TS --> GW : HTTP 400
+    GW --> User : Échec de la réservation
+else Fonds Réservés
+    ' --- PHASE B : Validation AML ---
+    TS -> AML : ValidateTransfer(amount)
+    activate AML
+    AML --> TS : amlResult ("ok", "check", "break")
+    deactivate AML
+
+    alt Cas : "break" (Refus Sécurité)
+        TS -> AS : POST /api/accounts/refund (Compensation)
+        activate AS
+        AS --> TS : OK
+        deactivate AS
+        TS --> GW : HTTP 403 (Forbidden)
+        GW --> User : Transaction refusée (AML)
+        
+    else Cas : "ok" ou "check"
+        TS -> TDB : Save Transaction (Status: Pending)
+        activate TDB
+        TDB --> TS : Success
+        deactivate TDB
+        
+        TS --> GW : HTTP 201 (Created)
+        GW --> User : Transaction initiée (En attente du destinataire)
+
+        ' --- PHASE C : Réponse du Destinataire ---
+        ... Temps d'attente / Action du destinataire ...
+        
+        User -> GW : POST /api/transactions/responses (Accepted: true/false)
+        GW -> TS : HandleReceiverResponseAsync(resp)
+        
+        alt Destinataire Refuse
+            TS -> AS : POST /api/accounts/refund (Compensation)
+            TS -> TDB : Update Status: "Rejected"
+            TS --> GW : HTTP 200 (Remboursé

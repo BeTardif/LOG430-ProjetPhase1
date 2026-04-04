@@ -1,0 +1,34 @@
+1) Analyse de métier à approfondir 
+	1. Un client devrait pouvoir se connecter sans nécessairement pouvoir voir ses comptes
+	2. Cela implique que account devrait être une nouveau service
+
+	3. La documentation de ce point devrait être à compléter.
+
+2) Architecture et décision.
+	1. Modification de l'architecture à la fin.
+	2. Rédaction des CUs 
+		--> Critère d'acceptation
+		--> Documentation et démonstration finale
+	3. Ajouter les ReadMe. 
+
+3) Persistance & intégrité
+	1. Indempotency-key
+	2. S'assurer que chaque élément fonctionne
+
+4) Implémentation de l'API REST
+	S'assurer que tout est conforme mais sensiblement fait
+
+5) Observabilité, tests de charge, optimisation
+Toute la parti observabilité dépend des routes implémentées. Le reste va en découler et sont faits à partir de librairie.
+Le caching devrait être fait a même les daos --­> Implémenter Redis dans les éléments
+Documenter la modification
+	1. Promotheus
+	2. Grafana
+	3. latence traffic 95/99 
+	4. Graphic comparatif
+	
+6) APIGateway
+	Done
+
+7) CI/CD
+	Done 

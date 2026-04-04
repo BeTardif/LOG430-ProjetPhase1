@@ -1,0 +1,26 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "AMLService" {
+    package "AMLService.Authentification" {
+        class AMLAccount {
+            {static} + ValidateAccountOpening(initialDeposit : double) : string
+        }
+
+        class AMLAuthentification {
+            {static} + EncodeNas(nas : int) : string
+            {static} + DecryptNas(encodedNas : string) : int
+            {static} + validateNasConformity(nas : int) : bool
+        }
+    }
+
+    package "AMLService.Transaction" {
+        class AMLTransaction {
+            {static} + ValidateTransfer(amount : decimal) : string
+        }
+    }
+}
+@enduml

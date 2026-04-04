@@ -20,5 +20,10 @@ var app = builder.Build();
 app.Run();
 ```
 
+* EF Core (Entity Framework Core): 
+    ORM facilitant l'intégration de code SQL dans C#
+
 
 * Middleware: 
+
+* ORM (Object-Relational Mapper): Permet d'intéragir avec du code SQL avec un logic C#

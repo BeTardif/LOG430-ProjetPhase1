@@ -1,0 +1,74 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "CanBankX_TransService" {
+
+    package "Configuration" {
+        class "Program.cs" as Program <<Entry Point>> {
+            + MapPost("/api/transactions/transfers")
+            + MapPost("/api/transactions/responses")
+            + MapGet("/api/transactions/test-db")
+        }
+    }
+
+    package "Logique Métier" {
+        class TransferService {
+            - db : TransactionDbContext
+            + InitiateTransferAsync(TransferRequest) : Task<IResult>
+            + HandleReceiverResponseAsync(TransactionResponseDto) : Task<IResult>
+        }
+    }
+
+    package "<<SubModule>> AMLService" #F9F9F9 {
+        class AMLTransaction <<Static>> {
+            + ValidateTransfer(amount : decimal) : string
+        }
+    }
+
+    package "Data (Persistance)" {
+        class TransactionDbContext {
+            + Transactions : DbSet<Transaction>
+            + SaveChangesAsync()
+        }
+    }
+
+    package "Models" {
+        class Transaction <<Entity>> {
+            + Id : int
+            + SenderAccountId : int
+            + ReceiverEmail : string
+            + Amount : decimal
+            + Status : string
+            + TransactionDate : DateTime
+        }
+        
+        class TransferRequest <<DTO>> {
+            + SenderAccountId : int
+            + ReceiverEmail : string
+            + Amount : decimal
+            + Note : string
+        }
+
+        class TransactionResponseDto <<DTO>> {
+            + TransactionId : int
+            + Accepted : bool
+        }
+    }
+}
+
+Program --> TransferService
+TransferService --> TransactionDbContext
+
+TransferService -right-> AMLTransaction : "Validation Transfert"
+TransferService -down-> Transaction : "<<manages>>"
+TransferService .down.> TransferRequest : "<<use>>"
+TransferService .down.> TransactionResponseDto : "<<use>>"
+
+Configuration -[hidden]right-> "<<SubModule>> AMLService"
+"Logique Métier" -[hidden]down-> "Data (Persistance)"
+
+@enduml
+```

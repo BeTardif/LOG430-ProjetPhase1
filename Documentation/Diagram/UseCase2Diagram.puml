@@ -1,0 +1,57 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+actor "Utilisateur / Client" as User
+participant "APIGateway (YARP)" as GW
+participant "AuthService : Program" as Prog
+participant "SessionService" as SS
+database "AuthDB (MySQL)" as DB
+
+User -> GW : POST /api/auth/authentification (LoginRequest)
+activate GW
+
+GW -> Prog : Proxy Request
+activate Prog
+
+Prog -> SS : InitializeSessionAsync(req)
+activate SS
+
+SS -> DB : Get Client by Email/Password
+activate DB
+DB --> SS : Client Data (ou Null)
+deactivate DB
+
+alt Identifiants invalides
+    SS --> Prog : IResult (401 Unauthorized)
+    Prog --> GW : HTTP 401
+    GW --> User : Échec de l'authentification
+else Identifiants Valides
+    SS -> SS : Generate MFA Code & SessionId
+    SS -> SS : Store in Sessions (ConcurrentDictionary)
+    SS --> Prog : IResult (200 OK + SessionId)
+    Prog --> GW : HTTP 200
+    GW --> User : SessionId (Attente MFA)
+
+    ' --- Étape de confirmation MFA ---
+    User -> GW : POST /api/auth/sessions/{id}/mfa (MfaCode)
+    GW -> Prog : Proxy Request
+    Prog -> SS : ConfirmMfaAsync(sessionId, mfaCode)
+    
+    alt Code MFA Incorrect ou Expiré
+        SS --> Prog : IResult (400 Bad Request)
+        Prog --> GW : HTTP 400
+        GW --> User : Code MFA invalide
+    else Code MFA Valide
+        SS -> SS : Update Session Status (Active)
+        SS --> Prog : IResult (200 OK + Token/Success)
+        Prog --> GW : HTTP 200
+        GW --> User : Authentification réussie
+    end
+end
+
+deactivate SS
+deactivate Prog
+deactivate GW
+@enduml

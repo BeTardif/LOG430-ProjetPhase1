@@ -1,0 +1,57 @@
+@startuml
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+actor "Utilisateur / Client" as User
+participant "APIGateway (YARP)" as GW
+participant "AuthService : Program" as Prog
+participant "SessionService" as SS
+participant "AccountService" as AS
+participant "AMLAccount" as AML <<Static>>
+database "AuthDB (MySQL)" as DB
+
+User -> GW : POST /api/auth/accounts (AccountOpeningRequest)
+activate GW
+
+GW -> Prog : Proxy Request
+activate Prog
+
+Prog -> AS : OpenAccountAsync(req)
+activate AS
+
+AS -> SS : GetSession(sessionId)
+activate SS
+SS --> AS : AuthSession
+deactivate SS
+
+alt Session Invalide ou Inexistante
+    AS --> Prog : IResult (401 Unauthorized)
+    Prog --> GW : HTTP 401
+    GW --> User : Session expirée ou invalide
+else Session Valide
+    AS -> AML : ValidateAccountOpening(amount)
+    activate AML
+    AML --> AS : string result (ex: "ok", "check")
+    deactivate AML
+
+    alt Validation AML Échouée
+        AS --> Prog : IResult (403 Forbidden)
+        Prog --> GW : HTTP 403
+        GW --> User : Ouverture refusée (Critères AML)
+    else Validation AML Réussie
+        AS -> DB : Create New Account (Active/Pending)
+        activate DB
+        DB --> AS : Success
+        deactivate DB
+
+        AS --> Prog : IResult (201 Created)
+        Prog --> GW : HTTP 201
+        GW --> User : Compte créé avec succès
+    end
+end
+
+deactivate AS
+deactivate Prog
+deactivate GW
+@enduml

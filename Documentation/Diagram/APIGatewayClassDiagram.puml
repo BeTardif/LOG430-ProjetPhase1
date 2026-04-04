@@ -1,0 +1,100 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "CanBankX_APIGateway" {
+
+    package "Configuration" {
+        class "Program.cs" as Program <<Entry Point>> {
+            + builder : WebApplicationBuilder
+            + app : WebApplication
+            -- Routes --
+            + MapPost("/api/profiles")
+            + MapPost("/api/sessions")
+            + MapPost("/api/accounts")
+            + MapPost("/api/transfers")
+        }
+    }
+
+    package "External Interfaces (.NET Core)"  {
+        interface IHttpClientFactory {
+            + CreateClient() : HttpClient
+        }
+        interface IConfiguration {
+            + GetValue<T>(key) : T
+        }
+    }
+
+    package "Services" {
+        class AuthServiceProxy <<partial>> {
+            - _authUrl : string
+            - factory : IHttpClientFactory
+            + AuthServiceProxy(IHttpClientFactory, IConfiguration)
+            + RegisterProfileAsync(RegisterRequest)
+            + LoginAsync(LoginRequest)
+            + ConfirmMfaAsync(HttpContext)
+            + OpenAccountAsync(AccountOpeningRequest)
+        }
+
+        class TransServiceProxy {
+            - _transUrl : string
+            - factory : IHttpClientFactory
+            + TransServiceProxy(IHttpClientFactory, IConfiguration)
+            + InitiateTransferAsync(TransferRequest)
+            + RespondToTransferAsync(TransactionResponseDto)
+        }
+    }
+
+    package "Models" {
+        class RegisterRequest {
+            + FirstName : string
+            + LastName : string
+            + Email : string
+            + Password : string
+        }
+        class LoginRequest {
+            + Email : string
+            + Password : string
+        }
+        class AccountOpeningRequest {
+            + SessionId : Guid
+            + AccountType : string
+            + InitialDeposit : decimal
+        }
+        class AuthResponse {
+            + Id : int
+            + Otp : string
+            + Message : string
+        }
+        class TransferRequest {
+            + SenderAccountId : int
+            + ReceiverEmail : string
+            + Amount : decimal
+            + Note : string
+        }
+        class TransactionResponseDto {
+            + TransactionId : int
+            + Accepted : bool
+        }
+    }
+}
+
+Program --> AuthServiceProxy : "<<inject & call>>"
+Program --> TransServiceProxy : "<<inject & call>>"
+
+AuthServiceProxy --> IHttpClientFactory : "<<use>>"
+AuthServiceProxy --> IConfiguration : "<<use>>"
+TransServiceProxy --> IHttpClientFactory : "<<use>>"
+TransServiceProxy --> IConfiguration : "<<use>>"
+
+AuthServiceProxy --> RegisterRequest
+AuthServiceProxy --> LoginRequest
+AuthServiceProxy --> AccountOpeningRequest
+AuthServiceProxy --> AuthResponse
+
+TransServiceProxy --> TransferRequest
+TransServiceProxy --> TransactionResponseDto
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle frame
+skinparam shadowing false
+
+node "CanBankX" {
+
+    component [APIGateway] <<ASP.NET Core / YARP>> as Gateway {
+        package "Configuration (YARP)"
+    }
+
+    component [AuthService] <<Web API>> as Auth {
+        package "Logique Métier " as AuthLogic
+        package "Models " as AuthModels
+    }
+
+    component [TransService] <<Web API>> as Trans {
+        package "Logique Métier" as TransLogic
+        package "Models" as TransModels
+    }
+
+    component [AMLService] <<Class Library>> as AML {
+        package "Logique de sécurité (Authentication)"
+        package "Logique de sécurité (Transaction)"
+    }
+
+    database "MySQL (AuthDB)" as AuthDB
+    database "MySQL (TransDB)" as TransDB
+}
+
+' Flux de requêtes externe via le Gateway
+interface "Client (Frontend/Postman)" as Client
+Client --down-> Gateway : "Requêtes API"
+
+' Routage YARP vers les services
+Gateway --down-> Auth : "Proxies vers /api/auth"
+Gateway --down-> Trans : "Proxies vers /api/transactions"
+
+' Dépendances de développement (Bibliothèques partagées)
+AuthLogic ..> AML : "<<use>>"
+TransLogic ..> AML : "<<use>>"
+
+' Communication directe inter-services
+TransLogic --(0--> Auth : "Appels HTTP (Reservation/Refund)"
+
+' Persistance
+AuthModels ..> AuthDB
+TransModels ..> TransDB
+
+@enduml
