@@ -1,0 +1,256 @@
+services:
+  client-db:
+    build: ../LOG430-Projet1-ClientBD
+    container_name: mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: CanBankXClientDB
+      MYSQL_USER: canbank_user_id
+      MYSQL_PASSWORD: canbank_user_password
+    networks:
+      - canbankx_net
+    ports:
+      - "3306:3306"
+    volumes:
+      - client_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  transaction-db:
+    build: ../LOG430-Projet1-TransactionDB
+    container_name: transactiondb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: CanBankXTransDB
+      MYSQL_USER: canbank_user_id
+      MYSQL_PASSWORD: canbank_user_password
+    networks:
+      - canbankx_net
+    ports:
+      - "3307:3306"
+    volumes:
+      - transaction_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service-1:
+    build:
+      context: ../LOG430-Projet1-AuthService
+      dockerfile: CanBankX_AuthService/Dockerfile
+    container_name: auth-service-1
+    ports:
+      - "5001:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql-db;Port=3306;Database=CanBankXClientDB;Uid=root;Pwd=root;
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      client-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  auth-service-2:
+    build:
+      context: ../LOG430-Projet1-AuthService
+      dockerfile: CanBankX_AuthService/Dockerfile
+    container_name: auth-service-2
+    ports:
+      - "5002:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql-db;Port=3306;Database=CanBankXClientDB;Uid=root;Pwd=root;
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      client-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  auth-service-3:
+    build:
+      context: ../LOG430-Projet1-AuthService
+      dockerfile: CanBankX_AuthService/Dockerfile
+    container_name: auth-service-3
+    ports:
+      - "5003:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql-db;Port=3306;Database=CanBankXClientDB;Uid=root;Pwd=root;
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      client-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  transaction-service-1:
+    build:
+      context: ../LOG430-Projet1-TransService/CanBankX_TransService
+      dockerfile: Dockerfile
+    container_name: transaction-service-1
+    ports:
+      - "5261:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=transactiondb;Port=3306;Database=CanBankXTransDB;Uid=root;Pwd=root;
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  transaction-service-2:
+    build:
+      context: ../LOG430-Projet1-TransService/CanBankX_TransService
+      dockerfile: Dockerfile
+    container_name: transaction-service-2
+    ports:
+      - "5262:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=transactiondb;Port=3306;Database=CanBankXTransDB;Uid=root;Pwd=root;
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  transaction-service-3:
+    build:
+      context: ../LOG430-Projet1-TransService/CanBankX_TransService
+      dockerfile: Dockerfile
+    container_name: transaction-service-3
+    ports:
+      - "5263:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=transactiondb;Port=3306;Database=CanBankXTransDB;Uid=root;Pwd=root;
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - canbankx_net
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  api-gateway:
+    build:
+      context: ../LOG430-ProjetPhase1-APIGateway
+      dockerfile: CanBankX_APIGateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "80:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - canbankx_net
+    depends_on:
+      auth-service-1:
+        condition: service_healthy
+      auth-service-2:
+        condition: service_healthy
+      auth-service-3:
+        condition: service_healthy
+      transaction-service-1:
+        condition: service_healthy
+      transaction-service-2:
+        condition: service_healthy
+      transaction-service-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  webapp:
+    build: ../LOG430-ProjetPhase1-UI/canbankx
+    container_name: webapp
+    ports:
+      - "3001:80"          
+    networks:
+      - canbankx_net      
+    depends_on:
+      api-gateway:
+        condition: service_healthy 
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ../LOG430-ProjetPhase1-APIGateway/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - canbankx_net
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../LOG430-ProjetPhase1-APIGateway/deploy/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ../LOG430-ProjetPhase1-APIGateway/deploy/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - canbankx_net
+    depends_on:
+      - prometheus
+
+networks:
+  canbankx_net:
+    driver: bridge
+
+volumes:
+  client_db_data:
+  transaction_db_data:
